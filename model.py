@@ -29,8 +29,13 @@ class Stem(nn.Module):
 
 
 class Node(nn.Module):
-    def __init__(self, in_channels, out_channels, m, stride=(1, 1, 1)):
+    def __init__(self, level, num_edges, in_channels, out_channels, m, stride=(1, 1, 1)):
         super(Node, self).__init__()
+        self.level = level
+        self.num_edges = num_edges
+
+        self.weights = nn.Parameter(torch.ones([len(self.edges)]), requires_grad=True)
+
         self.m = int(m * 2)
         self.layers = nn.ModuleList()
 
@@ -48,18 +53,10 @@ class Node(nn.Module):
 
 
 class Model(nn.Module):
-    def __init__(self):
+    def __init__(self, graph):
         super(Model, self).__init__()
+        self.graph = graph
         self.layers = nn.ModuleDict()
-        self.level = 4
-        self.hidden_size = [
-            [32, 64, 96, 128],
-            [128, 256, 384, 512],
-            [128, 256, 384, 512],
-            [128, 256, 384, 512]
-        ]
-
-        self.dilation = [1, 2, 4, 8]
 
         self.layers['0'] = nn.ModuleList()
         for _ in range(4):
@@ -74,8 +71,6 @@ class Model(nn.Module):
             self.layers[str(level)] = nn.ModuleDict()
             for _ in range(4):
                 random_out_channels, random_dilation = self.hidden_size[level - 1][random.randint(0, len(self.hidden_size[level - 1]) - 1)], self.dilation[random.randint(0, len(self.dilation) - 1)]
-                
-
 
     def forward(self, x):
         pass
