@@ -1,4 +1,4 @@
-# Implementing AssembleNet: Searching for Multi-Stream Neural Connectivity in Video Architectures Explain using Pytorch
+# Implementing AssembleNet: Searching for Multi-Stream Neural Connectivity in Video Architectures Explain using Pytorch (Work In Process)
 
 ## Reference
   ### This repo is not official repository.
@@ -30,3 +30,5 @@
 
   ```
 ## Work In Process
+  - Connection-Learning-Guided Mutation
+  - Evolution
