@@ -158,12 +158,17 @@ class Model(nn.Module):
         return out
 
 
-from make_graph import Graph
-import pprint
+def main():
+    from make_graph import Graph
+    import pprint
 
-g = Graph()
-m = Model(g.graph)
-pprint.pprint(m.graph, width=160)
+    g = Graph()
+    m = Model(g.graph)
+    pprint.pprint(m.graph, width=160)
 
-x = torch.randn([2, 3, 16, 256, 256])
-print(m(x).size())
+    x = torch.randn([2, 3, 16, 256, 256])
+    print(m(x).size())
+
+
+if __name__ == '__main__':
+    main()
