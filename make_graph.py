@@ -50,9 +50,14 @@ class Graph(object):
     def _generate_random_edges(self, level, node_num):
         candidate_nodes = [(i - 1) * 4 + j for i in range(1, level + 1) for j in range(1, self.per_n_nodes + 1)]
         self.graph[node_num]['edges'] = []
+        self.graph[node_num]['others'] = []
+        self.graph[node_num]['n_totals'] = len(candidate_nodes)
         for _ in candidate_nodes:
-            if random.random() > 0.5 and _ not in self.empty_edge_nodes:
+            rand_prob = random.random()
+            if rand_prob > 0.5 and _ not in self.empty_edge_nodes:
                 self.graph[node_num]['edges'].append(_)
+            else:
+                self.graph[node_num]['others'].append(_)
 
         # handling empty connected edges
         if len(self.graph[node_num]['edges']) == 0:
@@ -77,5 +82,5 @@ def main():
     pass
 
 
-if __name__ == '__main__':
-    main()
+# if __name__ == '__main__':
+#     main()

@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from collections import defaultdict
+import random
 
 from utils import SpatialTemporalConvolution, SpatialConvolution, ConvBlock
 
@@ -33,20 +34,27 @@ class Node(nn.Module):
         super(Node, self).__init__()
         self.level = level
         self.edges = graph[node_num]['edges']
+        self.edge_total = graph[node_num]['n_totals']
+        self.total_edges = sorted(graph[node_num]['edges'] + graph[node_num]['others'])
+        # print(self.total_edges)
+        self.other_edges = torch.sub(torch.tensor(graph[node_num]['others']), 1).long()
         self.cur_lv = graph[node_num]['level']
-        self.channels = [graph[i]['channels'] for i in self.edges]
+        self.channels = [graph[i]['channels'] for i in self.total_edges]
         self.max_channels = max(self.channels)
+        self.node_num = node_num
 
         self.num_edges = len(self.edges)
         self.graph = graph
 
-        self.weights = nn.Parameter(torch.ones([self.num_edges]), requires_grad=True)
+        self.edge_probs = nn.Parameter(torch.ones([self.edge_total]), requires_grad=True)
+        self.switch = nn.Parameter(torch.zeros([self.edge_total]), requires_grad=False)
+        self.switch[self.other_edges] = 1.
 
         self.m = int(m * 2)
         self.layers = nn.ModuleDict()
 
         self.layers['in'] = nn.ModuleList()
-        for node_idx, i in zip(self.edges, self.channels):
+        for node_idx, i in zip(self.total_edges, self.channels):
             lv = graph[node_idx]['level']
 
             if lv != self.cur_lv and self.cur_lv >= 3:
@@ -73,10 +81,10 @@ class Node(nn.Module):
         self.layers['out'] = nn.Sequential(*self.layers['out'])
 
     def forward(self, outs):
-        weights = torch.sigmoid(self.weights)
+        edge_probs = torch.sigmoid(self.edge_probs)
         out = 0.
         for idx, i in enumerate(self.edges):
-            out += weights[idx] * self.layers['in'][idx](outs[i])
+            out += edge_probs[i - 1] * self.switch[i - 1] * self.layers['in'][i - 1](outs[i])
         return self.layers['out'](out)
 
 
@@ -157,6 +165,46 @@ class Model(nn.Module):
 
         return out
 
+    def _evolution(self):
+        exclude_total_edges = 0
+        current_total_edges = 0
+        for key, value in self.graph.items():
+            if 'others' in value.keys():
+                exclude_total_edges += len(value['others'])
+                current_total_edges += len(value['edges'])
+
+        new_total_edges = 0
+        for idx, (name, params) in enumerate(self.named_parameters()):
+            if 'edge_probs' in name:
+                node_num = int(name.split('.')[1])
+                exclude_edge = []
+
+                for edge in self.graph[node_num]['edges']:
+                    if params[edge - 1] < 0.5:
+                        exclude_edge.append(edge - 1)
+                        self.graph[node_num]['edges'].remove(edge)
+                        self.graph[node_num]['others'].append(edge)
+                new_total_edges += len(self.graph[node_num]['edges'])
+            if 'switch' in name:
+                exclude_edge = torch.tensor(exclude_edge).long()
+                params[exclude_edge] = 0.
+        edge_ratio = abs(float(current_total_edges - new_total_edges)) / float(exclude_total_edges)
+
+        for idx, (name, params) in enumerate(self.named_parameters()):
+            if 'switch' in name:
+                node_num = int(name.split('.')[1])
+                include_edge_inds = []
+                others = self.graph[node_num]['others'].copy()
+                for ex_edge in others:
+                    if random.random() < edge_ratio:
+                        self.graph[node_num]['others'].remove(ex_edge)
+                        self.graph[node_num]['edges'].append(ex_edge)
+                self.graph[node_num]['others'] = sorted(self.graph[node_num]['others'])
+                self.graph[node_num]['edges'] = sorted(self.graph[node_num]['edges'])
+
+                include_edge_inds = torch.tensor(include_edge_inds).long()
+                params[include_edge_inds] = 1.
+
 
 from make_graph import Graph
 import pprint
@@ -164,6 +212,8 @@ import pprint
 g = Graph()
 m = Model(g.graph)
 pprint.pprint(m.graph, width=160)
+m._evolution()
+pprint.pprint(m.graph, width=160)
 
-x = torch.randn([2, 3, 16, 256, 256])
+x = torch.randn([2, 3, 16, 112, 112])
 print(m(x).size())
