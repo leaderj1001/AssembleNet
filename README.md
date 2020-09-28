@@ -27,8 +27,25 @@
 
   x = torch.randn([2, 3, 16, 256, 256])
   print(m(x).size())
-
   ```
+  - Network Evolution
+  ```
+  from make_graph import Graph
+  import pprint
+
+  g = Graph()
+  m = Model(g.graph)
+  pprint.pprint(m.graph, width=160)
+  m._evolution()
+  pprint.pprint(m.graph, width=160)
+
+  x = torch.randn([2, 3, 16, 256, 256])
+  print(m(x).size())
+  ```
+## Evolution
+  <img width="1080" alt="스크린샷 2020-09-28 오후 12 50 18" src="https://user-images.githubusercontent.com/22078438/94390762-92836300-018e-11eb-852b-845d7294f31e.png">
+
 ## Work In Process
   - Connection-Learning-Guided Mutation
   - Evolution
+  - Training
